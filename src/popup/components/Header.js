@@ -24,7 +24,7 @@ const getToggleButtonTitle = isEnabled => {
 
 export default props => (
   <div id="header">
-    <div className="title">Simple Translate</div>
+    <div className="title">Simple Translate With Context</div>
     <div className="rightButtons">
       <div className="toggleButton" title={getToggleButtonTitle(props.isEnabledOnPage)}>
         <Toggle

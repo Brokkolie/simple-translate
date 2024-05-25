@@ -81,12 +81,71 @@ const waitTime = time => {
   return new Promise(resolve => setTimeout(() => resolve(), time));
 };
 
+
+const handleTextSelection = () => {
+  let selection = window.getSelection();
+  let selectedText = selection.toString();
+
+  if (selectedText.length > 0) {
+    // Den Bereich der Auswahl erhalten
+    let range = selection.getRangeAt(0);
+    let startContainer = range.startContainer;
+    let endContainer = range.endContainer;
+    let startOffset = range.startOffset;
+    let endOffset = range.endOffset;
+
+    // Den gesamten Text des Start- und End-Containers holen
+    let startContainerText = startContainer.textContent;
+    let endContainerText = endContainer.textContent;
+
+    // Funktion zum Finden des nächsten Satzzeichens links
+    function findPreviousSentenceBoundary(text, offset) {
+      for (let i = offset - 1; i >= 0; i--) {
+        if (text[i] === '.' || text[i] === ',') {
+          return i + 1;
+        }
+      }
+      return 0;
+    }
+
+    // Funktion zum Finden des nächsten Satzzeichens rechts
+    function findNextSentenceBoundary(text, offset) {
+      for (let i = offset; i < text.length; i++) {
+        if (text[i] === '.' || text[i] === ',') {
+          return i;
+        }
+      }
+      return text.length;
+    }
+
+    // Satzgrenzen finden
+    let startBoundary = findPreviousSentenceBoundary(startContainerText, startOffset);
+    let endBoundary = findNextSentenceBoundary(endContainerText, endOffset);
+
+    // Erweiterter Text
+    let extendedText = startContainerText.slice(startBoundary, startOffset) +
+      selectedText +
+      endContainerText.slice(endOffset, endBoundary);
+
+    if (extendedText.length < 300) {
+      return extendedText;
+    }
+  }
+  return '';
+}
+
 const getSelectedText = () => {
   const element = document.activeElement;
   const isInTextField = element.tagName === "INPUT" || element.tagName === "TEXTAREA";
+  
   const selectedText = isInTextField
+  ? element.value.substring(element.selectionStart, element.selectionEnd)
+  : handleTextSelection();
+
+  /* const selectedText = isInTextField
     ? element.value.substring(element.selectionStart, element.selectionEnd)
     : window.getSelection()?.toString() ?? "";
+  */
   return selectedText;
 };
 
