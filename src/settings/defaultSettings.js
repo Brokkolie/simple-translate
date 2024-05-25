@@ -154,7 +154,7 @@ export default [
         title: "whenSelectTextLabel",
         captions: [],
         type: "none",
-        default: "showButton",
+        default: "showPanel",
         childElements: [
           {
             id: "whenSelectText",
