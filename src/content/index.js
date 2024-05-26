@@ -10,6 +10,7 @@ const init = async () => {
   document.addEventListener("mouseup", handleMouseUp);
   document.addEventListener("keydown", handleKeyDown);
   document.addEventListener("visibilitychange", handleVisibilityChange);
+  document.addEventListener('scroll', handleScroll);
   browser.storage.local.onChanged.addListener(handleSettingsChange);
   browser.runtime.onMessage.addListener(handleMessage);
   overWriteLogLevel();
@@ -79,6 +80,10 @@ const handleMouseUp = async e => {
 
 const waitTime = time => {
   return new Promise(resolve => setTimeout(() => resolve(), time));
+};
+
+const handleScroll = () => {
+  removeTranslatecontainer();
 };
 
 const handleTextSelection_v2 = () => {
@@ -255,22 +260,31 @@ const handleTextSelection = (e) => {
     };
   };
 
-  let range;
-  if (document.caretRangeFromPoint) {
-    range = document.caretRangeFromPoint(e.clientX, e.clientY);
-  } 
 
-  if (range) {
-    const textNode = range.startContainer;
-    const text = textNode.textContent;
-    const offset = range.startOffset;
+  let selection = window.getSelection();
+  let selectedText = selection.toString();
 
-    const wordBoundaries = getWordBoundaries(text, offset);
-    const clickedWord = text.slice(wordBoundaries.start, wordBoundaries.end);
-    const surroundingWords = getSurroundingWords(text, wordBoundaries.start, wordBoundaries.end);
+  if (selectedText.length > 0) {
+    return selectedText;
+  } else {
 
-    const extendedText = `${surroundingWords.left} ${clickedWord} ${surroundingWords.right}`.trim();
-    return extendedText;
+    let range;
+    if (document.caretRangeFromPoint) {
+      range = document.caretRangeFromPoint(e.clientX, e.clientY);
+    }
+
+    if (range) {
+      const textNode = range.startContainer;
+      const text = textNode.textContent;
+      const offset = range.startOffset;
+
+      const wordBoundaries = getWordBoundaries(text, offset);
+      const clickedWord = text.slice(wordBoundaries.start, wordBoundaries.end);
+      const surroundingWords = getSurroundingWords(text, wordBoundaries.start, wordBoundaries.end);
+
+      const extendedText = `${surroundingWords.left} ${clickedWord} ${surroundingWords.right}`.trim();
+      return extendedText;
+    }
   }
 
   return '';
@@ -292,14 +306,18 @@ const getSelectedText = (e) => {
 };
 
 const getSelectedPosition = () => {
+  const selection = window.getSelection();
   const element = document.activeElement;
   const isInTextField = element.tagName === "INPUT" || element.tagName === "TEXTAREA";
-  const selectedRect = isInTextField
-    ? element.getBoundingClientRect()
-    : window
-      .getSelection()
-      .getRangeAt(0)
-      .getBoundingClientRect();
+
+  let selectedRect;
+  if (isInTextField) {
+    selectedRect = element.getBoundingClientRect();
+  } else if (selection.rangeCount > 0) {
+    selectedRect = selection.getRangeAt(0).getBoundingClientRect();
+  } else {
+    return { x: 0, y: 0 }; // Standardposition, wenn keine Auswahl vorhanden ist
+  }
 
   let selectedPosition;
   const panelReferencePoint = getSettings("panelReferencePoint");
@@ -320,6 +338,7 @@ const getSelectedPosition = () => {
   }
   return selectedPosition;
 };
+
 
 const isInContentEditable = () => {
   const element = document.activeElement;
