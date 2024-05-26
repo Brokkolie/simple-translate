@@ -44,7 +44,7 @@ const handleMouseUp = async e => {
     if (!!e.target.closest && !!e.target.closest(ignoredLangSelector)) return;
   }
 
-  const selectedText = getSelectedText();
+  const selectedText = getSelectedText(e);
   prevSelectedText = selectedText;
   if (selectedText.length === 0) return;
 
@@ -81,8 +81,78 @@ const waitTime = time => {
   return new Promise(resolve => setTimeout(() => resolve(), time));
 };
 
+const handleTextSelection_v2 = () => {
+  let selection = window.getSelection();
+  let selectedText = selection.toString();
 
-const handleTextSelection = () => {
+  if (selectedText.length === 0) {
+    selectedText = e.target.innerText || e.target.textContent;
+  }
+
+  if (selectedText.length > 0) {
+    // Den Bereich der Auswahl erhalten
+    let range = selection.getRangeAt(0);
+    let startContainer = range.startContainer;
+    let endContainer = range.endContainer;
+    let startOffset = range.startOffset;
+    let endOffset = range.endOffset;
+
+    // Den gesamten Text des Start- und End-Containers holen
+    let startContainerText = startContainer.textContent;
+    let endContainerText = endContainer.textContent;
+
+    // Funktion zum Finden des nächsten Satzzeichens oder Wortgrenze links
+    function findPreviousBoundary(text, offset) {
+      let wordCount = 0;
+      for (let i = offset - 1; i >= 0; i--) {
+        if (text[i] === '.' || text[i] === ',' || text[i] === '"' || text[i] === ';') {
+          return i + 1;
+        }
+        if (text[i] === ' ') {
+          wordCount++;
+          if (wordCount === 2) {
+            return i + 1;
+          }
+        }
+      }
+      return 0;
+    }
+
+    // Funktion zum Finden des nächsten Satzzeichens oder Wortgrenze rechts
+    function findNextBoundary(text, offset) {
+      let wordCount = 0;
+      for (let i = offset; i < text.length; i++) {
+        if (text[i] === '.' || text[i] === ',' || text[i] === '"' || text[i] === ';') {
+          return i;
+        }
+        if (text[i] === ' ') {
+          wordCount++;
+          if (wordCount === 2) {
+            return i;
+          }
+        }
+      }
+      return text.length;
+    }
+
+    // Grenzen für die erweiterte Auswahl finden
+    let startBoundary = findPreviousBoundary(startContainerText, startOffset);
+    let endBoundary = findNextBoundary(endContainerText, endOffset);
+
+    // Erweiterter Text
+    let extendedText = startContainerText.slice(startBoundary, startOffset) +
+      selectedText +
+      endContainerText.slice(endOffset, endBoundary);
+
+    if (extendedText.length < 300) {
+      return extendedText;
+    }
+  }
+  return '';
+}
+
+
+const handleTextSelection_v1 = () => {
   let selection = window.getSelection();
   let selectedText = selection.toString();
 
@@ -134,13 +204,85 @@ const handleTextSelection = () => {
   return '';
 }
 
-const getSelectedText = () => {
+const handleTextSelection = (e) => {
+  const getWordBoundaries = (text, offset) => {
+    const isBoundary = (char) => /[\s.,;"“”]/.test(char);
+    let start = offset;
+    let end = offset;
+
+    // Finde Wortanfang
+    while (start > 0 && !isBoundary(text[start - 1])) {
+      start--;
+    }
+
+    // Finde Wortende
+    while (end < text.length && !isBoundary(text[end])) {
+      end++;
+    }
+
+    return { start, end };
+  };
+
+  const getSurroundingWords = (text, start, end) => {
+    const isBoundary = (char) => /[\s.,;"“”]/.test(char);
+
+    // Finde linkes Wort
+    let leftStart = start - 1;
+    let c_l = text[leftStart];
+    if (c_l === ' ') {
+      while (leftStart > 0 && !isBoundary(text[leftStart - 1])) {
+        leftStart--;
+      }
+    } else {
+      leftStart = start;
+    }
+
+    // Finde rechtes Wort
+    let rightEnd = end;
+    let c_r = text[rightEnd];
+    if (c_r === ' ') {
+      rightEnd++;
+    }
+    while (rightEnd < text.length && !isBoundary(text[rightEnd])) {
+      rightEnd++;
+    }
+
+    // console.log(c_l + ' ... ' + c_r);
+
+    return {
+      left: text.slice(leftStart, start).trim(),
+      right: text.slice(end, rightEnd).trim()
+    };
+  };
+
+  let range;
+  if (document.caretRangeFromPoint) {
+    range = document.caretRangeFromPoint(e.clientX, e.clientY);
+  } 
+
+  if (range) {
+    const textNode = range.startContainer;
+    const text = textNode.textContent;
+    const offset = range.startOffset;
+
+    const wordBoundaries = getWordBoundaries(text, offset);
+    const clickedWord = text.slice(wordBoundaries.start, wordBoundaries.end);
+    const surroundingWords = getSurroundingWords(text, wordBoundaries.start, wordBoundaries.end);
+
+    const extendedText = `${surroundingWords.left} ${clickedWord} ${surroundingWords.right}`.trim();
+    return extendedText;
+  }
+
+  return '';
+};
+
+const getSelectedText = (e) => {
   const element = document.activeElement;
   const isInTextField = element.tagName === "INPUT" || element.tagName === "TEXTAREA";
-  
+
   const selectedText = isInTextField
-  ? element.value.substring(element.selectionStart, element.selectionEnd)
-  : handleTextSelection();
+    ? element.value.substring(element.selectionStart, element.selectionEnd)
+    : handleTextSelection(e);
 
   /* const selectedText = isInTextField
     ? element.value.substring(element.selectionStart, element.selectionEnd)

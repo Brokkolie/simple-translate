@@ -439,8 +439,8 @@ export default [
             captions: [],
             type: "number",
             min: 1,
-            placeholder: 13,
-            default: 13
+            placeholder: 18,
+            default: 18
           },
           {
             id: "panelReferencePoint",
