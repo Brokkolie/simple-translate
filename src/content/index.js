@@ -86,132 +86,16 @@ const handleScroll = () => {
   removeTranslatecontainer();
 };
 
-const handleTextSelection_v2 = () => {
-  let selection = window.getSelection();
-  let selectedText = selection.toString();
-
-  if (selectedText.length === 0) {
-    selectedText = e.target.innerText || e.target.textContent;
-  }
-
-  if (selectedText.length > 0) {
-    // Den Bereich der Auswahl erhalten
-    let range = selection.getRangeAt(0);
-    let startContainer = range.startContainer;
-    let endContainer = range.endContainer;
-    let startOffset = range.startOffset;
-    let endOffset = range.endOffset;
-
-    // Den gesamten Text des Start- und End-Containers holen
-    let startContainerText = startContainer.textContent;
-    let endContainerText = endContainer.textContent;
-
-    // Funktion zum Finden des nächsten Satzzeichens oder Wortgrenze links
-    function findPreviousBoundary(text, offset) {
-      let wordCount = 0;
-      for (let i = offset - 1; i >= 0; i--) {
-        if (text[i] === '.' || text[i] === ',' || text[i] === '"' || text[i] === ';') {
-          return i + 1;
-        }
-        if (text[i] === ' ') {
-          wordCount++;
-          if (wordCount === 2) {
-            return i + 1;
-          }
-        }
-      }
-      return 0;
-    }
-
-    // Funktion zum Finden des nächsten Satzzeichens oder Wortgrenze rechts
-    function findNextBoundary(text, offset) {
-      let wordCount = 0;
-      for (let i = offset; i < text.length; i++) {
-        if (text[i] === '.' || text[i] === ',' || text[i] === '"' || text[i] === ';') {
-          return i;
-        }
-        if (text[i] === ' ') {
-          wordCount++;
-          if (wordCount === 2) {
-            return i;
-          }
-        }
-      }
-      return text.length;
-    }
-
-    // Grenzen für die erweiterte Auswahl finden
-    let startBoundary = findPreviousBoundary(startContainerText, startOffset);
-    let endBoundary = findNextBoundary(endContainerText, endOffset);
-
-    // Erweiterter Text
-    let extendedText = startContainerText.slice(startBoundary, startOffset) +
-      selectedText +
-      endContainerText.slice(endOffset, endBoundary);
-
-    if (extendedText.length < 300) {
-      return extendedText;
-    }
-  }
-  return '';
-}
-
-
-const handleTextSelection_v1 = () => {
-  let selection = window.getSelection();
-  let selectedText = selection.toString();
-
-  if (selectedText.length > 0) {
-    // Den Bereich der Auswahl erhalten
-    let range = selection.getRangeAt(0);
-    let startContainer = range.startContainer;
-    let endContainer = range.endContainer;
-    let startOffset = range.startOffset;
-    let endOffset = range.endOffset;
-
-    // Den gesamten Text des Start- und End-Containers holen
-    let startContainerText = startContainer.textContent;
-    let endContainerText = endContainer.textContent;
-
-    // Funktion zum Finden des nächsten Satzzeichens links
-    function findPreviousSentenceBoundary(text, offset) {
-      for (let i = offset - 1; i >= 0; i--) {
-        if (text[i] === '.' || text[i] === ',') {
-          return i + 1;
-        }
-      }
-      return 0;
-    }
-
-    // Funktion zum Finden des nächsten Satzzeichens rechts
-    function findNextSentenceBoundary(text, offset) {
-      for (let i = offset; i < text.length; i++) {
-        if (text[i] === '.' || text[i] === ',') {
-          return i;
-        }
-      }
-      return text.length;
-    }
-
-    // Satzgrenzen finden
-    let startBoundary = findPreviousSentenceBoundary(startContainerText, startOffset);
-    let endBoundary = findNextSentenceBoundary(endContainerText, endOffset);
-
-    // Erweiterter Text
-    let extendedText = startContainerText.slice(startBoundary, startOffset) +
-      selectedText +
-      endContainerText.slice(endOffset, endBoundary);
-
-    if (extendedText.length < 300) {
-      return extendedText;
-    }
-  }
-  return '';
-}
 
 const handleTextSelection = (e) => {
   const getWordBoundaries = (text, offset) => {
-    const isBoundary = (char) => /[\s.,;"“”]/.test(char);
+    const isBoundary = (char) => {
+      if (e.altKey) {
+        return /[.,;"“”]/.test(char);
+      } else {
+        return /[\s.,;"“”]/.test(char);
+      }
+    }
     let start = offset;
     let end = offset;
 
@@ -229,6 +113,7 @@ const handleTextSelection = (e) => {
   };
 
   const getSurroundingWords = (text, start, end) => {
+
     const isBoundary = (char) => /[\s.,;"“”]/.test(char);
 
     // Finde linkes Wort
@@ -271,6 +156,13 @@ const handleTextSelection = (e) => {
     let range;
     if (document.caretRangeFromPoint) {
       range = document.caretRangeFromPoint(e.clientX, e.clientY);
+    } else if (document.caretPositionFromPoint) {
+      let caret = document.caretPositionFromPoint(e.clientX, e.clientY);
+      if (caret) {
+        range = document.createRange();
+        range.setStart(caret.offsetNode, caret.offset);
+        range.setEnd(caret.offsetNode, caret.offset);
+      }
     }
 
     if (range) {
